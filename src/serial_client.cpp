@@ -27,23 +27,25 @@ int run(int argc, char ** argv);
 
 int main(int argc, char **argv){
     ros::init(argc, argv, "serial_client_lsm9ds1");
-    ros::NodeHandle n;
+    ros::NodeHandle n("~");
 
     ros::Publisher imu_pub = n.advertise<sensor_msgs::Imu>("/imu/data", 1000);
 
     ros::Rate loop_rate(30);
     // cout << "hola";
 
-    string port;
+    string port, imu_name, base_name;
     int baud;
     float x_imu_robot, y_imu_robot, z_imu_robot;
 
     n.param("serial_port", port, string("/dev/ttyUSB0"));
+    n.param("imu", imu_name, string("imu_second_floor_link"));
+    n.param("base", base_name, string("base_link"));
     n.param("baudrate", baud, 230400);
     n.param("x_imu_robot", x_imu_robot, 0.f);
     n.param("y_imu_robot", y_imu_robot, 0.f);
     n.param("z_imu_robot", z_imu_robot, 0.20f);
-    
+
     Serial *my_serial = new Serial();
     try {
         my_serial->setPort(port);
@@ -58,28 +60,35 @@ int main(int argc, char **argv){
         cerr << "Unhandled Exception: " << e.what() << endl;
     }
     
-    ROS_INFO("Opening %s", port.c_str());
+    ROS_INFO("Opening %s with %d baudrate ", port.c_str(), baud);
     if(!my_serial->isOpen()){
-        ROS_ERROR("Serial port is not open. Try to set serial_port param if this is not your device");
-        return 1;
+        ROS_ERROR("Serial port is not open. Try to set serial_port param if this is not your device or change baudrate param");
+        return -1;
     }
     
     ROS_INFO("Connected!");
+
+    ROS_INFO("%s is (%f, %f, %f) away from %s", imu_name.c_str(), x_imu_robot, y_imu_robot, z_imu_robot, base_name.c_str());
+    
     
     string buff;
     double aRes, gRes, mRes;
     boost::numeric::ublas::vector<double> aOff (3), gOff (3), mOff (3);
     matrix<double> mSoftIron(3, 3);
     
+    uint msgs_count=0;
     while(my_serial!= NULL && my_serial->isOpen() && ros::ok()){
-    
+        if(msgs_count > 30){
+            ROS_INFO("Sent IMU messages");
+            msgs_count=0;
+        }
         buff = my_serial->readline(65536, "\n");
         std::vector<string> strs;
         boost::split(strs, buff, boost::is_any_of(" "));
 
         if (strs.size() == 17 && !strs[0].compare("Imu:")) {
             sensor_msgs::Imu imu;
-            imu.header.frame_id = "imu_second_floor_link";
+            imu.header.frame_id = imu_name;
             imu.header.stamp = ros::Time::now();
             imu.orientation.w = atof(strs[1].c_str());
             imu.orientation.x = atof(strs[2].c_str());
@@ -99,7 +108,6 @@ int main(int argc, char **argv){
             imu.linear_acceleration_covariance[8] = atof(strs[16].c_str());
             imu_pub.publish(imu);
 
-            
             static tf::TransformBroadcaster tfbroadcaster;
             tf::Transform tf_msg;
             
@@ -109,8 +117,10 @@ int main(int argc, char **argv){
             tf_msg.setOrigin(origin);
             tf_msg.setRotation(q);
             
-            tf::StampedTransform s_trans(tf_msg, imu.header.stamp, "base_link", "imu_second_floor_link");
+            tf::StampedTransform s_trans(tf_msg, imu.header.stamp, base_name, imu_name);
             tfbroadcaster.sendTransform(s_trans);
+
+            msgs_count++;
         }
 
         // Resolutions
