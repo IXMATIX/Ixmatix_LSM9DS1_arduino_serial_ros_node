@@ -24,3 +24,57 @@ If you want to specify a port where your device is sending messages, set imu nam
 ```console
 foo@bar:~$ rosrun lsm9ds1_imu serial_client _serial_port:="/dev/ttyACM0" _imu:="imu_left_arm" _z_imu_robot:=.2
 ```
+
+Serial Port Format
+This node reads imu data from serial port with a specific format. You can use [this example](https://github.com/IxmatixRoboticsUniversity/Ixmatix_LSM9DS1_arduino_ros/tree/master/examples/Ixmatix_LSM9DS1_ROS_no_nodehandler) as template for your program.
+
+### Serial port 
+#### IMU resolutions and offsets
+You have to set resolutions for accelerometer and gyroscope in order to convert raw data to real data. To do this, you have to send a serial port message ending with a `\n` and it has to be defined as follows:
+```
+aRes: accelerometer_resolution
+gRes: gyroscope_resolution
+```
+**Example:**
+```
+aRes: 0.00006100
+gRes: 0.00875000
+```
+Similarly, to declare IMU offsets you have to send it as follows:
+```
+aOff: accel_offset_x accel_offset_y accel_offset_z
+gOff: gyros_offset_x gyros_offset_y gyros_offset_z
+```
+**Example:**
+```
+aOff: 0.040 -0.100 -0.010
+gOff: -0.050 0.350 -0.730
+```
+#### IMU message definition
+Serial Port message has to be ended with a `\n` and has to be defined as follows:
+```
+Imu: q0 q1 q2 q3 gx gy gz gx_var gy_var gz_var ax ay az ax_var ay_var az_var
+```
+Name  | Definition
+----- | ----------
+q0    | w coefficient of quaternion orientation
+q1    | x coefficient of quaternion orientation
+q2    | y coefficient of quaternion orientation
+q3    | z coefficient of quaternion orientation
+gx    | gyroscope raw value in x
+gy    | gyroscope raw value in y
+gz    | gyroscope raw value in z
+gx_var| gyroscope covariance in x
+gy_var| gyroscope covariance in y
+gz_var| gyroscope covariance in z
+ax    | accelerometer raw value in x
+ay    | accelerometer raw value in y
+az    | accelerometer raw value in z
+ax_var| accelerometer covariance in x
+ay_var| accelerometer covariance in y
+az_var| accelerometer covariance in z
+
+**Example**:
+```
+Imu: 0.8504979 0.5120977 0.0719147 0.0960700 -244 2473 -1172 0.00 0.12 0.53 83 -15494 6300 0.00 0.01 0.00
+```
