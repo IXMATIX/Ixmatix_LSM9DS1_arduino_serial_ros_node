@@ -39,7 +39,7 @@ int main(int argc, char **argv){
     float x_imu_robot, y_imu_robot, z_imu_robot;
 
     n.param("serial_port", port, string("/dev/ttyUSB0"));
-    n.param("imu", imu_name, string("imu_second_floor_link"));
+    n.param("imu", imu_name, string("imu_link"));
     n.param("base", base_name, string("base_link"));
     n.param("baudrate", baud, 230400);
     n.param("x_imu_robot", x_imu_robot, 0.f);
